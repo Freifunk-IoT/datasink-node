@@ -13,7 +13,7 @@ import Auth from "../auth";
 
 
 const httpServer = http.createServer((req, res) => {
-   Logging.log(req.url);
+   // Logging.log(req.url);
    if (req.url.startsWith("/input")) {
       if (req.method === "POST")
          input_post(req, res);
@@ -25,10 +25,74 @@ const httpServer = http.createServer((req, res) => {
 })
 
 function catchall(req: http.IncomingMessage, res: http.ServerResponse) {
+   res.setHeader("Content-Type", "text/html")
    res.end(`<h1>Freifunk IOT Data Sink API</h1>`);
 }
 
-async function input_post(req: http.IncomingMessage, res: http.ServerResponse) { }
+interface PostDataStructure {
+   signature?: string;
+   token?: string;
+   values: { sensorID: string, channel: string, value: string | number }[];
+}
+
+let unauthorized = (res) => res.end(`{"success":false,"message":"Body to large!"}`);
+
+function input_post(req: http.IncomingMessage, res: http.ServerResponse) {
+   const timestamp = new Date();
+   let ct = req.headers["content-type"].toLowerCase();
+   if (ct.indexOf("json") < 0) {
+      res.end(`{"success":false,"message":"invalid content-type"}`);
+   } else {
+      let invalid = false; //Check invalid
+      let body = "";
+      req.on("data", (chunk: Buffer) => {
+         if (invalid) return;
+         if (chunk.length + body.length > 4096) {
+            res.end(`{"success":false,"message":"Body to large!"}`);
+            invalid = true;
+         } else {
+            body += chunk.toString("utf8");
+         }
+      })
+      req.on("end", async () => {
+         try {
+            if (!invalid) {
+               let data: PostDataStructure = JSON.parse(body);
+               if (data.signature) {
+                  Logging.debug("Found signature", data.signature);
+                  if (!await Auth.signature(data.signature)) {
+                     return unauthorized(res)
+                  }
+               }
+
+               if (data.token) {
+                  Logging.debug("Found token", data.token)
+                  if (!await Auth.token(data.token)) {
+                     return unauthorized(res)
+                  }
+               }
+
+               let points: DataPoint[] = [];
+               data.values.forEach(val => {
+                  let data_point = new DataPoint({
+                     channel: val.channel,
+                     sensorId: val.sensorID,
+                     timestamp: timestamp,
+                     value: val.value
+                  });
+                  points.push(data_point);
+               })
+               res.end(`{"success":true,"message":""}`);
+            }
+         } catch (err) {
+            Logging.error(err);
+            if (!res.finished) {
+               res.end(`{"success":false,"message":"${err.message}"}`);
+            }
+         }
+      })
+   }
+}
 
 async function input_get(req: http.IncomingMessage, res: http.ServerResponse) {
    try {
@@ -39,7 +103,7 @@ async function input_get(req: http.IncomingMessage, res: http.ServerResponse) {
       if (signature) {
          Logging.debug("Found signature", signature);
          if (!await Auth.signature(signature)) {
-            // TODO: Error
+            return unauthorized(res)
          }
          url.searchParams.delete("signature");
       }
@@ -48,15 +112,15 @@ async function input_get(req: http.IncomingMessage, res: http.ServerResponse) {
       if (token) {
          Logging.debug("Found token", token)
          if (!await Auth.token(token)) {
-            // TODO: Error
+            return unauthorized(res)
          }
          url.searchParams.delete("token");
       }
 
       let points: DataPoint[] = [];
       url.searchParams.forEach((value, key) => {
-         let [sensorId, channel] = key.split(".");
-         if (!sensorId || !channel) {
+         let [sensorID, channel] = key.split(".");
+         if (!sensorID || !channel) {
             Logging.warning("Cannot get sensorId or channel", key);
          } else {
             let val: number | string = Number(value);
@@ -64,7 +128,7 @@ async function input_get(req: http.IncomingMessage, res: http.ServerResponse) {
 
             let data_point = new DataPoint({
                channel: channel,
-               sensorId: sensorId,
+               sensorId: sensorID,
                timestamp: timestamp,
                value: val
             });

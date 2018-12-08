@@ -9,7 +9,6 @@ interface WebConfig {
 }
 
 interface DatabaseConfig {
-   enabled: boolean;
    database: string;
    host: string;
 }
@@ -56,7 +55,6 @@ const definition = {
       }
    },
    database: {
-      enabled: (value: string) => value !== undefined ? Boolean(value) : true,
       database: (value: string) => value || "ffiot",
       host: (value: string) => value || "127.0.0.1"
    },
