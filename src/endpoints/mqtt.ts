@@ -12,16 +12,18 @@ import Database from "../database";
 const client = mqtt.connect(config.mqtt.host);
 
 client.on('connect', function () {
-   client.subscribe(config.mqtt.base_topic + "#", function (err) {
+   client.subscribe(config.mqtt.base_topic, function (err) {
       if (err) {
          Logging.error(err);
+      } else {
+         Logging.log("MQTT Connected")
       }
    })
 })
 
 client.on('message', async (topic, message) => {
    Logging.debug("Received", topic);
-   if (topic === config.mqtt.base_topic + "#") {
+   if (topic === config.mqtt.base_topic) {
       let timestamp: Date = new Date();
       let data = JSON.parse(message.toString())
       Logging.debug("Data:", data);
@@ -43,8 +45,10 @@ client.on('message', async (topic, message) => {
 
       if (data.timestamp) {
          timestamp = new Date(Number(data.timestamp) * 1000);
+         delete data.timestamp;
       } else if (data.timestamp_ms) {
          timestamp = new Date(Number(data.timestamp_ms));
+         delete data.timestamp_ms;
       }
       let points: DataPoint[] = [];
       for (let key in data) {
@@ -70,10 +74,4 @@ client.on('message', async (topic, message) => {
          Logging.error(err);
       })
    }
-})
-
-process.on('SIGTERM', () => {
-   client.end(true, () => {
-      Logging.log('MQTT stopped')
-   })
 })

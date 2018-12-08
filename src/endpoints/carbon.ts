@@ -45,9 +45,3 @@ const tcp_server = net.createServer((socket) => {
 }).listen(config.carbon.port, config.carbon.host, () => {
    Logging.log(`Carbon listening on ${config.carbon.host}:${config.carbon.port}`);
 })
-
-process.on('SIGTERM', () => {
-   tcp_server.close(() => {
-      Logging.log('Carbon stopped')
-   })
-})

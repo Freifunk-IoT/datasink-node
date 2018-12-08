@@ -150,9 +150,3 @@ async function input_get(req: http.IncomingMessage, res: http.ServerResponse) {
 httpServer.listen(config.web.port, config.web.host, () => {
    Logging.log(`Listening on ${config.web.host}:${config.web.port}`);
 });
-
-process.on('SIGTERM', () => {
-   httpServer.close(() => {
-      Logging.log('REST stopped')
-   })
-})

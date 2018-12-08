@@ -2,8 +2,8 @@ import { Logging } from "@hibas123/nodelogging";
 import { config } from "./config";
 
 process.on('uncaughtException', function (err) {
-   //TODO: Error logging
-   process.kill(process.pid, 'SIGTERM')
+   Logging.error(err);
+   process.exit()
 });
 
 if (config.web.enabled) {

@@ -60,7 +60,11 @@ const definition = {
    },
    mqtt: {
       enabled: (value: string) => value !== undefined ? Boolean(value) : false,
-      host: (value: string) => value || "http://127.0.0.1",
+      host: (value: string) => {
+         if (!value) return "mqtt://127.0.0.1";
+         if (value.split("://").length < 2) throw new Error("Protocol not set: mqtt://<host>. Supported protocols: 'mqtt', 'mqtts', 'tcp', 'tls', 'ws', 'wss'")
+         return value;
+      },
       base_topic: (value: string) => value || "iot"
    },
    carbon: {
