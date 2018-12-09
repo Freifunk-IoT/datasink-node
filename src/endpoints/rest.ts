@@ -13,7 +13,7 @@ import Auth from "../auth";
 
 
 const httpServer = http.createServer((req, res) => {
-   // Logging.log(req.url);
+   Logging.log(req.url);
    if (req.url.startsWith("/input")) {
       if (req.method === "POST")
          input_post(req, res);
