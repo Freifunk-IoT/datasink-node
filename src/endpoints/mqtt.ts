@@ -27,7 +27,12 @@ function subscribe(topic: string) {
 
 client.on('connect', () => {
    Logging.log("MQTT Connected")
-   let topics = config.mqtt.base_topic.split(";");
+
+   let topics = config.mqtt.base_topic
+      .split(";")
+      .map(e => e.split(",").map(e => e.trim()))
+      .reduce((acc, val) => acc.concat(val), []);
+
    Logging.log("Subscribe to:", topics);
    Promise.all(topics.map(topic => subscribe(topic))).then(() => {
       Logging.log("Subscribed to all topics!")
